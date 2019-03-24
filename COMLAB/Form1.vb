@@ -181,7 +181,7 @@ Public Class Form1
     Private Sub bunifuImageButton3_Click(sender As Object, e As EventArgs) Handles bunifuImageButton3.Click
         Select Case MetroMessageBox.Show(Me, "Are you sure to exit the application?", "LOG OUT.", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning)
             Case MsgBoxResult.Ok
-                Login.Show()
+            Application.Exit()
                 UpdateStatus()
                 Login.MaterialSingleLineTextField1.Clear()
                 Login.MaterialSingleLineTextField2.Clear()
