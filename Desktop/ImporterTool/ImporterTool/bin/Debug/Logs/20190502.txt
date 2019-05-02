@@ -1,0 +1,793 @@
+5/2/2019 6:07:57 PM - Create database connection...
+5/2/2019 6:07:57 PM - Successfully conected in the database...
+5/2/2019 6:07:57 PM - Select query: SELECT hostname FROM master.dbo.sysprocesses WHERE program_name='Dealer Importer Tool' AND hostname<>'SANTIE'
+5/2/2019 6:07:57 PM - Execute query...
+5/2/2019 6:07:57 PM - Query: IF OBJECT_ID('dbo.customerImportTemp', 'U') IS NOT NULL 
+DROP TABLE dbo.customerImportTemp 
+IF OBJECT_ID('dbo.customerImportTempError', 'U') IS NOT NULL DROP TABLE dbo.customerImportTempError 
+IF OBJECT_ID('dbo.customerImportTemp') IS NOT NULL DROP TABLE customerImportTemp 
+SELECT TOP 0 temporaryCode as DealerCode,FirstName,LastName,cellphone as MobileNumber,CONVERT(VARCHAR(50),Birthday) as Birthday,CONVERT(VARCHAR(MAX),'') as BranchCode,cardTypeId as [Rank],CONVERT(VARCHAR(50),'') as Sponsor 
+INTO  dbo.customerImportTemp 
+FROM customer WITH (NOLOCK) 
+SELECT TOP 0 temporaryCode as DealerCode,FirstName,LastName,cellphone as MobileNumber,CONVERT(VARCHAR(50),birthday) as Birthday,CONVERT(VARCHAR(MAX),'') as BranchCode,cardTypeId as [Rank],CONVERT(VARCHAR(50),'') as Sponsor, CONVERT(VARCHAR(100),'') as reason 
+INTO  dbo.customerImportTempError 
+FROM customer WITH (NOLOCK) 
+5/2/2019 6:07:57 PM - Successfully executed...
+5/2/2019 6:07:57 PM - Execute query...
+5/2/2019 6:07:57 PM - Query: BULK INSERT customerImportTemp 
+FROM 'C:\Users\Santie\Downloads\test1.csv' 
+WITH ( 
+	FIRSTROW = 2, 
+    FIELDTERMINATOR = ',', 
+    ROWTERMINATOR = '\n' 
+); 
+5/2/2019 6:07:57 PM - Execute query...
+5/2/2019 6:07:57 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'No dealer codes specified' 
+FROM customerImportTemp t 
+WHERE ISNULL(t.DealerCode,'')='' 
+DELETE FROM customerImportTemp 
+WHERE ISNULL(DealerCode,'')='' 
+5/2/2019 6:07:57 PM - Successfully executed...
+5/2/2019 6:07:57 PM - Execute query...
+5/2/2019 6:07:57 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'Already Exist' 
+FROM customerImportTemp t 
+LEFT JOIN Customer c WITH (NOLOCK) ON t.DealerCode=c.temporaryCode 
+WHERE ISNULL(c.temporaryCode,'')<>'' 
+UPDATE t 
+SET DealerCode='' 
+FROM customerImportTemp t 
+LEFT JOIN Customer c WITH (NOLOCK) ON t.DealerCode=c.temporaryCode 
+WHERE ISNULL(c.temporaryCode,'')<>'' 
+DELETE FROM customerImportTemp 
+WHERE DealerCode='' 
+5/2/2019 6:07:57 PM - Successfully executed...
+5/2/2019 6:07:57 PM - Execute query...
+5/2/2019 6:07:57 PM - Query: INSERT INTO customerImportTempError 
+SELECT *, 'Blank Name' 
+FROM customerImportTemp 
+WHERE LEN(ISNULL(firstName,'')+ISNULL(lastName,'')) < 2 
+DELETE customerImportTemp WHERE LEN(ISNULL(firstName,'')+ISNULL(lastName,'')) < 2 
+5/2/2019 6:07:58 PM - Successfully executed...
+5/2/2019 6:07:58 PM - Execute query...
+5/2/2019 6:07:58 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'Site RefCode not found' 
+FROM customerImportTemp t 
+LEFT JOIN Site s WITH (NOLOCK) ON t.BranchCode=s.refCode 
+WHERE ISNULL(s.refCode,'')='' 
+UPDATE t 
+SET BranchCode='' 
+FROM customerImportTemp t 
+LEFT JOIN Site s WITH (NOLOCK) ON t.BranchCode=s.refCode 
+WHERE ISNULL(s.refCode,'')=''  
+DELETE FROM customerImportTemp 
+WHERE BranchCode='' 
+5/2/2019 6:07:58 PM - Successfully executed...
+5/2/2019 6:07:58 PM - Execute query...
+5/2/2019 6:07:58 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'Invalid rank' 
+FROM customerImportTemp t 
+WHERE [rank] NOT IN (SELECT cardTypeId FROM cardType WHERE isDirectSelling=1) 
+DELETE customerImportTemp WHERE [rank] NOT IN (SELECT cardTypeId FROM cardType WHERE isDirectSelling=1) 
+5/2/2019 6:07:58 PM - Successfully executed...
+5/2/2019 6:07:58 PM - Execute query...
+5/2/2019 6:07:58 PM - Query: ALTER TABLE customerImportTemp 
+ADD 
+ [name] [varchar](MAX) NULL, 
+ [name2] [varchar](MAX) NULL, 
+ [membershipsiteCode] [varchar](50) NULL, 
+ [customerId] [INT] NULL; 
+
+5/2/2019 6:07:58 PM - Successfully executed...
+5/2/2019 6:07:58 PM - Execute query...
+5/2/2019 6:07:58 PM - Query: UPDATE customerImportTemp 
+SET name = ISNULL(lastName,'') + ', ' + ISNULL(firstName,'') 
+UPDATE customerImportTemp 
+SET name2 = name 
+5/2/2019 6:07:58 PM - Successfully executed...
+5/2/2019 6:07:58 PM - Execute query...
+5/2/2019 6:07:58 PM - Query: UPDATE customerImportTemp 
+SET membershipSiteCode = s.siteId 
+FROM customerImportTemp t 
+LEFT JOIN Site s ON s.RefCode = t.BranchCode 
+5/2/2019 6:07:58 PM - Successfully executed...
+5/2/2019 6:07:58 PM - Execute query...
+5/2/2019 6:07:58 PM - Query: WITH CTE AS( 
+ SELECT DealerCode,firstName,lastName,MobileNumber,birthday,BranchCode,[rank],sponsor, 
+    DupCount = ROW_NUMBER()OVER(PARTITION BY DealerCode ORDER BY DealerCode) 
+ FROM dbo.customerImportTemp 
+) 
+INSERT INTO customerImportTempError 
+SELECT DealerCode,firstName,lastName,MobileNumber,birthday,BranchCode,[rank],sponsor, 'DUPLICATE' FROM CTE WHERE DupCount > 1; 
+WITH CTE AS( 
+ SELECT DealerCode,firstName,lastName,MobileNumber,birthday,BranchCode,[rank],sponsor, 
+    DupCount = ROW_NUMBER()OVER(PARTITION BY DealerCode ORDER BY DealerCode) 
+ FROM dbo.customerImportTemp 
+) 
+DELETE CTE WHERE DupCount > 1;
+5/2/2019 6:07:58 PM - Successfully executed...
+5/2/2019 6:07:58 PM - Execute query...
+5/2/2019 6:07:58 PM - Query: DECLARE @customerId INT 
+SET @customerId = (SELECT MAX(CustomerId) FROM Customer WITH (NOLOCK)) 
+UPDATE customerImportTemp 
+SET  @customerId = customerId = @customerId + 1 
+5/2/2019 6:07:58 PM - Successfully executed...
+5/2/2019 6:07:58 PM - Execute query...
+5/2/2019 6:07:58 PM - Query: INSERT INTO customer(customerId,customerCode,temporaryCode,cardTypeId,firstName,lastName,birthday,cellphone,membershipSiteCode,name,name2,updateDate,expiryDate,createDate,membershipDate,datePromoted,status) 
+SELECT t.customerId,REPLACE(STR(t.customerId,7),' ','0'),t.DealerCode,[rank],t.firstName,t.lastName,CONVERT(DATETIME,ISNULL(t.birthday,'1/1/1900'),105),t.MobileNumber,t.membershipSiteCode,t.name,t.name2,GETDATE(),'12/31/3000',GETDATE(),GETDATE(),GETDATE(),'A' 
+FROM customerImportTemp t 
+LEFT JOIN Customer c ON t.DealerCode=c.temporaryCode 
+WHERE ISNULL(c.temporaryCode,'')='' 
+5/2/2019 6:07:58 PM - Successfully executed...
+5/2/2019 6:07:58 PM - Execute query...
+5/2/2019 6:07:58 PM - Query: IF (SELECT COUNT(customerId) FROM customerImportTemp WITH (NOLOCK)) > 0 BEGIN 
+   UPDATE counter SET value = (SELECT MAX(customerId) FROM customerImportTemp WITH (NOLOCK)) 
+   WHERE name = 'customerId' END
+5/2/2019 6:07:58 PM - Successfully executed...
+5/2/2019 6:07:58 PM - Select query: SELECT dealerCode,name FROM customerImportTemp
+5/2/2019 6:07:58 PM - Select query: SELECT dealerCode,ISNULL(lastName,'') + ', ' + ISNULL(firstName,'') as name,reason FROM customerImportTempError
+5/2/2019 6:07:59 PM - Successfully imported file: C:\Users\Santie\Downloads\test1.csv
+Total Dealers Imported:0
+Total Dealers With Errors:
+5/2/2019 6:09:33 PM - Create database connection...
+5/2/2019 6:09:33 PM - Successfully conected in the database...
+5/2/2019 6:09:33 PM - Select query: SELECT hostname FROM master.dbo.sysprocesses WHERE program_name='Dealer Importer Tool' AND hostname<>'SANTIE'
+5/2/2019 6:09:33 PM - Execute query...
+5/2/2019 6:09:33 PM - Query: IF OBJECT_ID('dbo.customerImportTemp', 'U') IS NOT NULL 
+DROP TABLE dbo.customerImportTemp 
+IF OBJECT_ID('dbo.customerImportTempError', 'U') IS NOT NULL DROP TABLE dbo.customerImportTempError 
+IF OBJECT_ID('dbo.customerImportTemp') IS NOT NULL DROP TABLE customerImportTemp 
+SELECT TOP 0 temporaryCode as DealerCode,FirstName,LastName,cellphone as MobileNumber,CONVERT(VARCHAR(50),Birthday) as Birthday,CONVERT(VARCHAR(MAX),'') as BranchCode,cardTypeId as [Rank],CONVERT(VARCHAR(50),'') as Sponsor 
+INTO  dbo.customerImportTemp 
+FROM customer WITH (NOLOCK) 
+SELECT TOP 0 temporaryCode as DealerCode,FirstName,LastName,cellphone as MobileNumber,CONVERT(VARCHAR(50),birthday) as Birthday,CONVERT(VARCHAR(MAX),'') as BranchCode,cardTypeId as [Rank],CONVERT(VARCHAR(50),'') as Sponsor, CONVERT(VARCHAR(100),'') as reason 
+INTO  dbo.customerImportTempError 
+FROM customer WITH (NOLOCK) 
+5/2/2019 6:09:33 PM - Successfully executed...
+5/2/2019 6:09:33 PM - Execute query...
+5/2/2019 6:09:33 PM - Query: BULK INSERT customerImportTemp 
+FROM 'C:\Users\Santie\Downloads\test1.csv' 
+WITH ( 
+	FIRSTROW = 2, 
+    FIELDTERMINATOR = ',', 
+    ROWTERMINATOR = '\n' 
+); 
+5/2/2019 6:09:33 PM - Execute query...
+5/2/2019 6:09:33 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'No dealer codes specified' 
+FROM customerImportTemp t 
+WHERE ISNULL(t.DealerCode,'')='' 
+DELETE FROM customerImportTemp 
+WHERE ISNULL(DealerCode,'')='' 
+5/2/2019 6:09:33 PM - Successfully executed...
+5/2/2019 6:09:33 PM - Execute query...
+5/2/2019 6:09:33 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'Already Exist' 
+FROM customerImportTemp t 
+LEFT JOIN Customer c WITH (NOLOCK) ON t.DealerCode=c.temporaryCode 
+WHERE ISNULL(c.temporaryCode,'')<>'' 
+UPDATE t 
+SET DealerCode='' 
+FROM customerImportTemp t 
+LEFT JOIN Customer c WITH (NOLOCK) ON t.DealerCode=c.temporaryCode 
+WHERE ISNULL(c.temporaryCode,'')<>'' 
+DELETE FROM customerImportTemp 
+WHERE DealerCode='' 
+5/2/2019 6:09:33 PM - Successfully executed...
+5/2/2019 6:09:33 PM - Execute query...
+5/2/2019 6:09:33 PM - Query: INSERT INTO customerImportTempError 
+SELECT *, 'Blank Name' 
+FROM customerImportTemp 
+WHERE LEN(ISNULL(firstName,'')+ISNULL(lastName,'')) < 2 
+DELETE customerImportTemp WHERE LEN(ISNULL(firstName,'')+ISNULL(lastName,'')) < 2 
+5/2/2019 6:09:33 PM - Successfully executed...
+5/2/2019 6:09:33 PM - Execute query...
+5/2/2019 6:09:33 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'Site RefCode not found' 
+FROM customerImportTemp t 
+LEFT JOIN Site s WITH (NOLOCK) ON t.BranchCode=s.refCode 
+WHERE ISNULL(s.refCode,'')='' 
+UPDATE t 
+SET BranchCode='' 
+FROM customerImportTemp t 
+LEFT JOIN Site s WITH (NOLOCK) ON t.BranchCode=s.refCode 
+WHERE ISNULL(s.refCode,'')=''  
+DELETE FROM customerImportTemp 
+WHERE BranchCode='' 
+5/2/2019 6:09:33 PM - Successfully executed...
+5/2/2019 6:09:33 PM - Execute query...
+5/2/2019 6:09:33 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'Invalid rank' 
+FROM customerImportTemp t 
+WHERE [rank] NOT IN (SELECT cardTypeId FROM cardType WHERE isDirectSelling=1) 
+DELETE customerImportTemp WHERE [rank] NOT IN (SELECT cardTypeId FROM cardType WHERE isDirectSelling=1) 
+5/2/2019 6:09:33 PM - Successfully executed...
+5/2/2019 6:09:33 PM - Execute query...
+5/2/2019 6:09:33 PM - Query: ALTER TABLE customerImportTemp 
+ADD 
+ [name] [varchar](MAX) NULL, 
+ [name2] [varchar](MAX) NULL, 
+ [membershipsiteCode] [varchar](50) NULL, 
+ [customerId] [INT] NULL; 
+
+5/2/2019 6:09:33 PM - Successfully executed...
+5/2/2019 6:09:33 PM - Execute query...
+5/2/2019 6:09:33 PM - Query: UPDATE customerImportTemp 
+SET name = ISNULL(lastName,'') + ', ' + ISNULL(firstName,'') 
+UPDATE customerImportTemp 
+SET name2 = name 
+5/2/2019 6:09:33 PM - Successfully executed...
+5/2/2019 6:09:33 PM - Execute query...
+5/2/2019 6:09:33 PM - Query: UPDATE customerImportTemp 
+SET membershipSiteCode = s.siteId 
+FROM customerImportTemp t 
+LEFT JOIN Site s ON s.RefCode = t.BranchCode 
+5/2/2019 6:09:33 PM - Successfully executed...
+5/2/2019 6:09:33 PM - Execute query...
+5/2/2019 6:09:33 PM - Query: WITH CTE AS( 
+ SELECT DealerCode,firstName,lastName,MobileNumber,birthday,BranchCode,[rank],sponsor, 
+    DupCount = ROW_NUMBER()OVER(PARTITION BY DealerCode ORDER BY DealerCode) 
+ FROM dbo.customerImportTemp 
+) 
+INSERT INTO customerImportTempError 
+SELECT DealerCode,firstName,lastName,MobileNumber,birthday,BranchCode,[rank],sponsor, 'DUPLICATE' FROM CTE WHERE DupCount > 1; 
+WITH CTE AS( 
+ SELECT DealerCode,firstName,lastName,MobileNumber,birthday,BranchCode,[rank],sponsor, 
+    DupCount = ROW_NUMBER()OVER(PARTITION BY DealerCode ORDER BY DealerCode) 
+ FROM dbo.customerImportTemp 
+) 
+DELETE CTE WHERE DupCount > 1;
+5/2/2019 6:09:34 PM - Successfully executed...
+5/2/2019 6:09:34 PM - Execute query...
+5/2/2019 6:09:34 PM - Query: DECLARE @customerId INT 
+SET @customerId = (SELECT MAX(CustomerId) FROM Customer WITH (NOLOCK)) 
+UPDATE customerImportTemp 
+SET  @customerId = customerId = @customerId + 1 
+5/2/2019 6:09:34 PM - Successfully executed...
+5/2/2019 6:09:34 PM - Execute query...
+5/2/2019 6:09:34 PM - Query: INSERT INTO customer(customerId,customerCode,temporaryCode,cardTypeId,firstName,lastName,birthday,cellphone,membershipSiteCode,name,name2,updateDate,expiryDate,createDate,membershipDate,datePromoted,status) 
+SELECT t.customerId,REPLACE(STR(t.customerId,7),' ','0'),t.DealerCode,[rank],t.firstName,t.lastName,CONVERT(DATETIME,ISNULL(t.birthday,'1/1/1900'),105),t.MobileNumber,t.membershipSiteCode,t.name,t.name2,GETDATE(),'12/31/3000',GETDATE(),GETDATE(),GETDATE(),'A' 
+FROM customerImportTemp t 
+LEFT JOIN Customer c ON t.DealerCode=c.temporaryCode 
+WHERE ISNULL(c.temporaryCode,'')='' 
+5/2/2019 6:09:34 PM - Successfully executed...
+5/2/2019 6:09:34 PM - Execute query...
+5/2/2019 6:09:34 PM - Query: IF (SELECT COUNT(customerId) FROM customerImportTemp WITH (NOLOCK)) > 0 BEGIN 
+   UPDATE counter SET value = (SELECT MAX(customerId) FROM customerImportTemp WITH (NOLOCK)) 
+   WHERE name = 'customerId' END
+5/2/2019 6:09:34 PM - Successfully executed...
+5/2/2019 6:09:34 PM - Select query: SELECT dealerCode,name FROM customerImportTemp
+5/2/2019 6:09:34 PM - Select query: SELECT dealerCode,ISNULL(lastName,'') + ', ' + ISNULL(firstName,'') as name,reason FROM customerImportTempError
+5/2/2019 6:09:36 PM - Successfully imported file: C:\Users\Santie\Downloads\test1.csv
+Total Dealers Imported:0
+Total Dealers With Errors:
+5/2/2019 6:11:41 PM - Create database connection...
+5/2/2019 6:11:41 PM - Successfully conected in the database...
+5/2/2019 6:11:42 PM - Select query: SELECT hostname FROM master.dbo.sysprocesses WHERE program_name='Dealer Importer Tool' AND hostname<>'SANTIE'
+5/2/2019 6:11:42 PM - Execute query...
+5/2/2019 6:11:42 PM - Query: IF OBJECT_ID('dbo.customerImportTemp', 'U') IS NOT NULL 
+DROP TABLE dbo.customerImportTemp 
+IF OBJECT_ID('dbo.customerImportTempError', 'U') IS NOT NULL DROP TABLE dbo.customerImportTempError 
+IF OBJECT_ID('dbo.customerImportTemp') IS NOT NULL DROP TABLE customerImportTemp 
+SELECT TOP 0 temporaryCode as DealerCode,FirstName,LastName,cellphone as MobileNumber,CONVERT(VARCHAR(50),Birthday) as Birthday,CONVERT(VARCHAR(MAX),'') as BranchCode,cardTypeId as [Rank],CONVERT(VARCHAR(50),'') as Sponsor 
+INTO  dbo.customerImportTemp 
+FROM customer WITH (NOLOCK) 
+SELECT TOP 0 temporaryCode as DealerCode,FirstName,LastName,cellphone as MobileNumber,CONVERT(VARCHAR(50),birthday) as Birthday,CONVERT(VARCHAR(MAX),'') as BranchCode,cardTypeId as [Rank],CONVERT(VARCHAR(50),'') as Sponsor, CONVERT(VARCHAR(100),'') as reason 
+INTO  dbo.customerImportTempError 
+FROM customer WITH (NOLOCK) 
+5/2/2019 6:11:42 PM - Successfully executed...
+5/2/2019 6:11:42 PM - Execute query...
+5/2/2019 6:11:42 PM - Query: BULK INSERT customerImportTemp 
+FROM 'C:\Users\Santie\Downloads\test1.csv' 
+WITH ( 
+	FIRSTROW = 2, 
+    FIELDTERMINATOR = ',', 
+    ROWTERMINATOR = '\n' 
+); 
+5/2/2019 6:11:42 PM - Execute query...
+5/2/2019 6:11:42 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'No dealer codes specified' 
+FROM customerImportTemp t 
+WHERE ISNULL(t.DealerCode,'')='' 
+DELETE FROM customerImportTemp 
+WHERE ISNULL(DealerCode,'')='' 
+5/2/2019 6:11:42 PM - Successfully executed...
+5/2/2019 6:11:42 PM - Execute query...
+5/2/2019 6:11:42 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'Already Exist' 
+FROM customerImportTemp t 
+LEFT JOIN Customer c WITH (NOLOCK) ON t.DealerCode=c.temporaryCode 
+WHERE ISNULL(c.temporaryCode,'')<>'' 
+UPDATE t 
+SET DealerCode='' 
+FROM customerImportTemp t 
+LEFT JOIN Customer c WITH (NOLOCK) ON t.DealerCode=c.temporaryCode 
+WHERE ISNULL(c.temporaryCode,'')<>'' 
+DELETE FROM customerImportTemp 
+WHERE DealerCode='' 
+5/2/2019 6:11:42 PM - Successfully executed...
+5/2/2019 6:11:42 PM - Execute query...
+5/2/2019 6:11:42 PM - Query: INSERT INTO customerImportTempError 
+SELECT *, 'Blank Name' 
+FROM customerImportTemp 
+WHERE LEN(ISNULL(firstName,'')+ISNULL(lastName,'')) < 2 
+DELETE customerImportTemp WHERE LEN(ISNULL(firstName,'')+ISNULL(lastName,'')) < 2 
+5/2/2019 6:11:42 PM - Successfully executed...
+5/2/2019 6:11:42 PM - Execute query...
+5/2/2019 6:11:42 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'Site RefCode not found' 
+FROM customerImportTemp t 
+LEFT JOIN Site s WITH (NOLOCK) ON t.BranchCode=s.refCode 
+WHERE ISNULL(s.refCode,'')='' 
+UPDATE t 
+SET BranchCode='' 
+FROM customerImportTemp t 
+LEFT JOIN Site s WITH (NOLOCK) ON t.BranchCode=s.refCode 
+WHERE ISNULL(s.refCode,'')=''  
+DELETE FROM customerImportTemp 
+WHERE BranchCode='' 
+5/2/2019 6:11:42 PM - Successfully executed...
+5/2/2019 6:11:42 PM - Execute query...
+5/2/2019 6:11:42 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'Invalid rank' 
+FROM customerImportTemp t 
+WHERE [rank] NOT IN (SELECT cardTypeId FROM cardType WHERE isDirectSelling=1) 
+DELETE customerImportTemp WHERE [rank] NOT IN (SELECT cardTypeId FROM cardType WHERE isDirectSelling=1) 
+5/2/2019 6:11:42 PM - Successfully executed...
+5/2/2019 6:11:42 PM - Execute query...
+5/2/2019 6:11:42 PM - Query: ALTER TABLE customerImportTemp 
+ADD 
+ [name] [varchar](MAX) NULL, 
+ [name2] [varchar](MAX) NULL, 
+ [membershipsiteCode] [varchar](50) NULL, 
+ [customerId] [INT] NULL; 
+
+5/2/2019 6:11:42 PM - Successfully executed...
+5/2/2019 6:11:42 PM - Execute query...
+5/2/2019 6:11:42 PM - Query: UPDATE customerImportTemp 
+SET name = ISNULL(lastName,'') + ', ' + ISNULL(firstName,'') 
+UPDATE customerImportTemp 
+SET name2 = name 
+5/2/2019 6:11:42 PM - Successfully executed...
+5/2/2019 6:11:42 PM - Execute query...
+5/2/2019 6:11:42 PM - Query: UPDATE customerImportTemp 
+SET membershipSiteCode = s.siteId 
+FROM customerImportTemp t 
+LEFT JOIN Site s ON s.RefCode = t.BranchCode 
+5/2/2019 6:11:42 PM - Successfully executed...
+5/2/2019 6:11:42 PM - Execute query...
+5/2/2019 6:11:42 PM - Query: WITH CTE AS( 
+ SELECT DealerCode,firstName,lastName,MobileNumber,birthday,BranchCode,[rank],sponsor, 
+    DupCount = ROW_NUMBER()OVER(PARTITION BY DealerCode ORDER BY DealerCode) 
+ FROM dbo.customerImportTemp 
+) 
+INSERT INTO customerImportTempError 
+SELECT DealerCode,firstName,lastName,MobileNumber,birthday,BranchCode,[rank],sponsor, 'DUPLICATE' FROM CTE WHERE DupCount > 1; 
+WITH CTE AS( 
+ SELECT DealerCode,firstName,lastName,MobileNumber,birthday,BranchCode,[rank],sponsor, 
+    DupCount = ROW_NUMBER()OVER(PARTITION BY DealerCode ORDER BY DealerCode) 
+ FROM dbo.customerImportTemp 
+) 
+DELETE CTE WHERE DupCount > 1;
+5/2/2019 6:11:42 PM - Successfully executed...
+5/2/2019 6:11:42 PM - Execute query...
+5/2/2019 6:11:42 PM - Query: DECLARE @customerId INT 
+SET @customerId = (SELECT MAX(CustomerId) FROM Customer WITH (NOLOCK)) 
+UPDATE customerImportTemp 
+SET  @customerId = customerId = @customerId + 1 
+5/2/2019 6:11:42 PM - Successfully executed...
+5/2/2019 6:11:42 PM - Execute query...
+5/2/2019 6:11:42 PM - Query: INSERT INTO customer(customerId,customerCode,temporaryCode,cardTypeId,firstName,lastName,birthday,cellphone,membershipSiteCode,name,name2,updateDate,expiryDate,createDate,membershipDate,datePromoted,status) 
+SELECT t.customerId,REPLACE(STR(t.customerId,7),' ','0'),t.DealerCode,[rank],t.firstName,t.lastName,CONVERT(DATETIME,ISNULL(t.birthday,'1/1/1900'),105),t.MobileNumber,t.membershipSiteCode,t.name,t.name2,GETDATE(),'12/31/3000',GETDATE(),GETDATE(),GETDATE(),'A' 
+FROM customerImportTemp t 
+LEFT JOIN Customer c ON t.DealerCode=c.temporaryCode 
+WHERE ISNULL(c.temporaryCode,'')='' 
+5/2/2019 6:11:42 PM - Successfully executed...
+5/2/2019 6:11:42 PM - Execute query...
+5/2/2019 6:11:42 PM - Query: IF (SELECT COUNT(customerId) FROM customerImportTemp WITH (NOLOCK)) > 0 BEGIN 
+   UPDATE counter SET value = (SELECT MAX(customerId) FROM customerImportTemp WITH (NOLOCK)) 
+   WHERE name = 'customerId' END
+5/2/2019 6:11:43 PM - Successfully executed...
+5/2/2019 6:11:43 PM - Select query: SELECT dealerCode,name FROM customerImportTemp
+5/2/2019 6:11:43 PM - Select query: SELECT dealerCode,ISNULL(lastName,'') + ', ' + ISNULL(firstName,'') as name,reason FROM customerImportTempError
+5/2/2019 6:11:43 PM - Successfully imported file: C:\Users\Santie\Downloads\test1.csv
+Total Dealers Imported:0
+Total Dealers With Errors:
+5/2/2019 6:12:34 PM - Create database connection...
+5/2/2019 6:12:34 PM - Successfully conected in the database...
+5/2/2019 6:12:34 PM - Select query: SELECT hostname FROM master.dbo.sysprocesses WHERE program_name='Dealer Importer Tool' AND hostname<>'SANTIE'
+5/2/2019 6:12:34 PM - Execute query...
+5/2/2019 6:12:34 PM - Query: IF OBJECT_ID('dbo.customerImportTemp', 'U') IS NOT NULL 
+DROP TABLE dbo.customerImportTemp 
+IF OBJECT_ID('dbo.customerImportTempError', 'U') IS NOT NULL DROP TABLE dbo.customerImportTempError 
+IF OBJECT_ID('dbo.customerImportTemp') IS NOT NULL DROP TABLE customerImportTemp 
+SELECT TOP 0 temporaryCode as DealerCode,FirstName,LastName,cellphone as MobileNumber,CONVERT(VARCHAR(50),Birthday) as Birthday,CONVERT(VARCHAR(MAX),'') as BranchCode,cardTypeId as [Rank],CONVERT(VARCHAR(50),'') as Sponsor 
+INTO  dbo.customerImportTemp 
+FROM customer WITH (NOLOCK) 
+SELECT TOP 0 temporaryCode as DealerCode,FirstName,LastName,cellphone as MobileNumber,CONVERT(VARCHAR(50),birthday) as Birthday,CONVERT(VARCHAR(MAX),'') as BranchCode,cardTypeId as [Rank],CONVERT(VARCHAR(50),'') as Sponsor, CONVERT(VARCHAR(100),'') as reason 
+INTO  dbo.customerImportTempError 
+FROM customer WITH (NOLOCK) 
+5/2/2019 6:12:35 PM - Successfully executed...
+5/2/2019 6:12:35 PM - Execute query...
+5/2/2019 6:12:35 PM - Query: BULK INSERT customerImportTemp 
+FROM 'C:\Users\Santie\Downloads\test1.csv' 
+WITH ( 
+	FIRSTROW = 2, 
+    FIELDTERMINATOR = ',', 
+    ROWTERMINATOR = '\n' 
+); 
+5/2/2019 6:12:35 PM - Execute query...
+5/2/2019 6:12:35 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'No dealer codes specified' 
+FROM customerImportTemp t 
+WHERE ISNULL(t.DealerCode,'')='' 
+DELETE FROM customerImportTemp 
+WHERE ISNULL(DealerCode,'')='' 
+5/2/2019 6:12:35 PM - Successfully executed...
+5/2/2019 6:12:35 PM - Execute query...
+5/2/2019 6:12:35 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'Already Exist' 
+FROM customerImportTemp t 
+LEFT JOIN Customer c WITH (NOLOCK) ON t.DealerCode=c.temporaryCode 
+WHERE ISNULL(c.temporaryCode,'')<>'' 
+UPDATE t 
+SET DealerCode='' 
+FROM customerImportTemp t 
+LEFT JOIN Customer c WITH (NOLOCK) ON t.DealerCode=c.temporaryCode 
+WHERE ISNULL(c.temporaryCode,'')<>'' 
+DELETE FROM customerImportTemp 
+WHERE DealerCode='' 
+5/2/2019 6:12:35 PM - Successfully executed...
+5/2/2019 6:12:35 PM - Execute query...
+5/2/2019 6:12:35 PM - Query: INSERT INTO customerImportTempError 
+SELECT *, 'Blank Name' 
+FROM customerImportTemp 
+WHERE LEN(ISNULL(firstName,'')+ISNULL(lastName,'')) < 2 
+DELETE customerImportTemp WHERE LEN(ISNULL(firstName,'')+ISNULL(lastName,'')) < 2 
+5/2/2019 6:12:35 PM - Successfully executed...
+5/2/2019 6:12:35 PM - Execute query...
+5/2/2019 6:12:35 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'Site RefCode not found' 
+FROM customerImportTemp t 
+LEFT JOIN Site s WITH (NOLOCK) ON t.BranchCode=s.refCode 
+WHERE ISNULL(s.refCode,'')='' 
+UPDATE t 
+SET BranchCode='' 
+FROM customerImportTemp t 
+LEFT JOIN Site s WITH (NOLOCK) ON t.BranchCode=s.refCode 
+WHERE ISNULL(s.refCode,'')=''  
+DELETE FROM customerImportTemp 
+WHERE BranchCode='' 
+5/2/2019 6:12:35 PM - Successfully executed...
+5/2/2019 6:12:35 PM - Execute query...
+5/2/2019 6:12:35 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'Invalid rank' 
+FROM customerImportTemp t 
+WHERE [rank] NOT IN (SELECT cardTypeId FROM cardType WHERE isDirectSelling=1) 
+DELETE customerImportTemp WHERE [rank] NOT IN (SELECT cardTypeId FROM cardType WHERE isDirectSelling=1) 
+5/2/2019 6:12:35 PM - Successfully executed...
+5/2/2019 6:12:35 PM - Execute query...
+5/2/2019 6:12:35 PM - Query: ALTER TABLE customerImportTemp 
+ADD 
+ [name] [varchar](MAX) NULL, 
+ [name2] [varchar](MAX) NULL, 
+ [membershipsiteCode] [varchar](50) NULL, 
+ [customerId] [INT] NULL; 
+
+5/2/2019 6:12:35 PM - Successfully executed...
+5/2/2019 6:12:35 PM - Execute query...
+5/2/2019 6:12:35 PM - Query: UPDATE customerImportTemp 
+SET name = ISNULL(lastName,'') + ', ' + ISNULL(firstName,'') 
+UPDATE customerImportTemp 
+SET name2 = name 
+5/2/2019 6:12:35 PM - Successfully executed...
+5/2/2019 6:12:35 PM - Execute query...
+5/2/2019 6:12:35 PM - Query: UPDATE customerImportTemp 
+SET membershipSiteCode = s.siteId 
+FROM customerImportTemp t 
+LEFT JOIN Site s ON s.RefCode = t.BranchCode 
+5/2/2019 6:12:35 PM - Successfully executed...
+5/2/2019 6:12:35 PM - Execute query...
+5/2/2019 6:12:35 PM - Query: WITH CTE AS( 
+ SELECT DealerCode,firstName,lastName,MobileNumber,birthday,BranchCode,[rank],sponsor, 
+    DupCount = ROW_NUMBER()OVER(PARTITION BY DealerCode ORDER BY DealerCode) 
+ FROM dbo.customerImportTemp 
+) 
+INSERT INTO customerImportTempError 
+SELECT DealerCode,firstName,lastName,MobileNumber,birthday,BranchCode,[rank],sponsor, 'DUPLICATE' FROM CTE WHERE DupCount > 1; 
+WITH CTE AS( 
+ SELECT DealerCode,firstName,lastName,MobileNumber,birthday,BranchCode,[rank],sponsor, 
+    DupCount = ROW_NUMBER()OVER(PARTITION BY DealerCode ORDER BY DealerCode) 
+ FROM dbo.customerImportTemp 
+) 
+DELETE CTE WHERE DupCount > 1;
+5/2/2019 6:12:35 PM - Successfully executed...
+5/2/2019 6:12:35 PM - Execute query...
+5/2/2019 6:12:35 PM - Query: DECLARE @customerId INT 
+SET @customerId = (SELECT MAX(CustomerId) FROM Customer WITH (NOLOCK)) 
+UPDATE customerImportTemp 
+SET  @customerId = customerId = @customerId + 1 
+5/2/2019 6:12:35 PM - Successfully executed...
+5/2/2019 6:12:35 PM - Execute query...
+5/2/2019 6:12:35 PM - Query: INSERT INTO customer(customerId,customerCode,temporaryCode,cardTypeId,firstName,lastName,birthday,cellphone,membershipSiteCode,name,name2,updateDate,expiryDate,createDate,membershipDate,datePromoted,status) 
+SELECT t.customerId,REPLACE(STR(t.customerId,7),' ','0'),t.DealerCode,[rank],t.firstName,t.lastName,CONVERT(DATETIME,ISNULL(t.birthday,'1/1/1900'),105),t.MobileNumber,t.membershipSiteCode,t.name,t.name2,GETDATE(),'12/31/3000',GETDATE(),GETDATE(),GETDATE(),'A' 
+FROM customerImportTemp t 
+LEFT JOIN Customer c ON t.DealerCode=c.temporaryCode 
+WHERE ISNULL(c.temporaryCode,'')='' 
+5/2/2019 6:12:35 PM - Successfully executed...
+5/2/2019 6:12:35 PM - Execute query...
+5/2/2019 6:12:35 PM - Query: IF (SELECT COUNT(customerId) FROM customerImportTemp WITH (NOLOCK)) > 0 BEGIN 
+   UPDATE counter SET value = (SELECT MAX(customerId) FROM customerImportTemp WITH (NOLOCK)) 
+   WHERE name = 'customerId' END
+5/2/2019 6:12:35 PM - Successfully executed...
+5/2/2019 6:12:35 PM - Select query: SELECT dealerCode,name FROM customerImportTemp
+5/2/2019 6:12:35 PM - Select query: SELECT dealerCode,ISNULL(lastName,'') + ', ' + ISNULL(firstName,'') as name,reason FROM customerImportTempError
+5/2/2019 6:12:36 PM - Successfully imported file: C:\Users\Santie\Downloads\test1.csv
+Total Dealers Imported:0
+Total Dealers With Errors:
+5/2/2019 6:12:39 PM - Select query: SELECT hostname FROM master.dbo.sysprocesses WHERE program_name='Dealer Importer Tool' AND hostname<>'SANTIE'
+5/2/2019 6:12:39 PM - Execute query...
+5/2/2019 6:12:39 PM - Query: IF OBJECT_ID('dbo.customerImportTemp', 'U') IS NOT NULL 
+DROP TABLE dbo.customerImportTemp 
+IF OBJECT_ID('dbo.customerImportTempError', 'U') IS NOT NULL DROP TABLE dbo.customerImportTempError 
+IF OBJECT_ID('dbo.customerImportTemp') IS NOT NULL DROP TABLE customerImportTemp 
+SELECT TOP 0 temporaryCode as DealerCode,FirstName,LastName,cellphone as MobileNumber,CONVERT(VARCHAR(50),Birthday) as Birthday,CONVERT(VARCHAR(MAX),'') as BranchCode,cardTypeId as [Rank],CONVERT(VARCHAR(50),'') as Sponsor 
+INTO  dbo.customerImportTemp 
+FROM customer WITH (NOLOCK) 
+SELECT TOP 0 temporaryCode as DealerCode,FirstName,LastName,cellphone as MobileNumber,CONVERT(VARCHAR(50),birthday) as Birthday,CONVERT(VARCHAR(MAX),'') as BranchCode,cardTypeId as [Rank],CONVERT(VARCHAR(50),'') as Sponsor, CONVERT(VARCHAR(100),'') as reason 
+INTO  dbo.customerImportTempError 
+FROM customer WITH (NOLOCK) 
+5/2/2019 6:12:39 PM - Successfully executed...
+5/2/2019 6:12:39 PM - Execute query...
+5/2/2019 6:12:39 PM - Query: BULK INSERT customerImportTemp 
+FROM 'C:\Users\Santie\Downloads\test1.csv' 
+WITH ( 
+	FIRSTROW = 2, 
+    FIELDTERMINATOR = ',', 
+    ROWTERMINATOR = '\n' 
+); 
+5/2/2019 6:12:39 PM - Execute query...
+5/2/2019 6:12:39 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'No dealer codes specified' 
+FROM customerImportTemp t 
+WHERE ISNULL(t.DealerCode,'')='' 
+DELETE FROM customerImportTemp 
+WHERE ISNULL(DealerCode,'')='' 
+5/2/2019 6:12:39 PM - Successfully executed...
+5/2/2019 6:12:39 PM - Execute query...
+5/2/2019 6:12:39 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'Already Exist' 
+FROM customerImportTemp t 
+LEFT JOIN Customer c WITH (NOLOCK) ON t.DealerCode=c.temporaryCode 
+WHERE ISNULL(c.temporaryCode,'')<>'' 
+UPDATE t 
+SET DealerCode='' 
+FROM customerImportTemp t 
+LEFT JOIN Customer c WITH (NOLOCK) ON t.DealerCode=c.temporaryCode 
+WHERE ISNULL(c.temporaryCode,'')<>'' 
+DELETE FROM customerImportTemp 
+WHERE DealerCode='' 
+5/2/2019 6:12:40 PM - Successfully executed...
+5/2/2019 6:12:40 PM - Execute query...
+5/2/2019 6:12:40 PM - Query: INSERT INTO customerImportTempError 
+SELECT *, 'Blank Name' 
+FROM customerImportTemp 
+WHERE LEN(ISNULL(firstName,'')+ISNULL(lastName,'')) < 2 
+DELETE customerImportTemp WHERE LEN(ISNULL(firstName,'')+ISNULL(lastName,'')) < 2 
+5/2/2019 6:12:40 PM - Successfully executed...
+5/2/2019 6:12:40 PM - Execute query...
+5/2/2019 6:12:40 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'Site RefCode not found' 
+FROM customerImportTemp t 
+LEFT JOIN Site s WITH (NOLOCK) ON t.BranchCode=s.refCode 
+WHERE ISNULL(s.refCode,'')='' 
+UPDATE t 
+SET BranchCode='' 
+FROM customerImportTemp t 
+LEFT JOIN Site s WITH (NOLOCK) ON t.BranchCode=s.refCode 
+WHERE ISNULL(s.refCode,'')=''  
+DELETE FROM customerImportTemp 
+WHERE BranchCode='' 
+5/2/2019 6:12:40 PM - Successfully executed...
+5/2/2019 6:12:40 PM - Execute query...
+5/2/2019 6:12:40 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'Invalid rank' 
+FROM customerImportTemp t 
+WHERE [rank] NOT IN (SELECT cardTypeId FROM cardType WHERE isDirectSelling=1) 
+DELETE customerImportTemp WHERE [rank] NOT IN (SELECT cardTypeId FROM cardType WHERE isDirectSelling=1) 
+5/2/2019 6:12:40 PM - Successfully executed...
+5/2/2019 6:12:40 PM - Execute query...
+5/2/2019 6:12:40 PM - Query: ALTER TABLE customerImportTemp 
+ADD 
+ [name] [varchar](MAX) NULL, 
+ [name2] [varchar](MAX) NULL, 
+ [membershipsiteCode] [varchar](50) NULL, 
+ [customerId] [INT] NULL; 
+
+5/2/2019 6:12:40 PM - Successfully executed...
+5/2/2019 6:12:40 PM - Execute query...
+5/2/2019 6:12:40 PM - Query: UPDATE customerImportTemp 
+SET name = ISNULL(lastName,'') + ', ' + ISNULL(firstName,'') 
+UPDATE customerImportTemp 
+SET name2 = name 
+5/2/2019 6:12:40 PM - Successfully executed...
+5/2/2019 6:12:40 PM - Execute query...
+5/2/2019 6:12:40 PM - Query: UPDATE customerImportTemp 
+SET membershipSiteCode = s.siteId 
+FROM customerImportTemp t 
+LEFT JOIN Site s ON s.RefCode = t.BranchCode 
+5/2/2019 6:12:40 PM - Successfully executed...
+5/2/2019 6:12:40 PM - Execute query...
+5/2/2019 6:12:40 PM - Query: WITH CTE AS( 
+ SELECT DealerCode,firstName,lastName,MobileNumber,birthday,BranchCode,[rank],sponsor, 
+    DupCount = ROW_NUMBER()OVER(PARTITION BY DealerCode ORDER BY DealerCode) 
+ FROM dbo.customerImportTemp 
+) 
+INSERT INTO customerImportTempError 
+SELECT DealerCode,firstName,lastName,MobileNumber,birthday,BranchCode,[rank],sponsor, 'DUPLICATE' FROM CTE WHERE DupCount > 1; 
+WITH CTE AS( 
+ SELECT DealerCode,firstName,lastName,MobileNumber,birthday,BranchCode,[rank],sponsor, 
+    DupCount = ROW_NUMBER()OVER(PARTITION BY DealerCode ORDER BY DealerCode) 
+ FROM dbo.customerImportTemp 
+) 
+DELETE CTE WHERE DupCount > 1;
+5/2/2019 6:12:40 PM - Successfully executed...
+5/2/2019 6:12:40 PM - Execute query...
+5/2/2019 6:12:40 PM - Query: DECLARE @customerId INT 
+SET @customerId = (SELECT MAX(CustomerId) FROM Customer WITH (NOLOCK)) 
+UPDATE customerImportTemp 
+SET  @customerId = customerId = @customerId + 1 
+5/2/2019 6:12:40 PM - Successfully executed...
+5/2/2019 6:12:40 PM - Execute query...
+5/2/2019 6:12:40 PM - Query: INSERT INTO customer(customerId,customerCode,temporaryCode,cardTypeId,firstName,lastName,birthday,cellphone,membershipSiteCode,name,name2,updateDate,expiryDate,createDate,membershipDate,datePromoted,status) 
+SELECT t.customerId,REPLACE(STR(t.customerId,7),' ','0'),t.DealerCode,[rank],t.firstName,t.lastName,CONVERT(DATETIME,ISNULL(t.birthday,'1/1/1900'),105),t.MobileNumber,t.membershipSiteCode,t.name,t.name2,GETDATE(),'12/31/3000',GETDATE(),GETDATE(),GETDATE(),'A' 
+FROM customerImportTemp t 
+LEFT JOIN Customer c ON t.DealerCode=c.temporaryCode 
+WHERE ISNULL(c.temporaryCode,'')='' 
+5/2/2019 6:12:40 PM - Successfully executed...
+5/2/2019 6:12:40 PM - Execute query...
+5/2/2019 6:12:40 PM - Query: IF (SELECT COUNT(customerId) FROM customerImportTemp WITH (NOLOCK)) > 0 BEGIN 
+   UPDATE counter SET value = (SELECT MAX(customerId) FROM customerImportTemp WITH (NOLOCK)) 
+   WHERE name = 'customerId' END
+5/2/2019 6:12:40 PM - Successfully executed...
+5/2/2019 6:12:40 PM - Select query: SELECT dealerCode,name FROM customerImportTemp
+5/2/2019 6:12:40 PM - Select query: SELECT dealerCode,ISNULL(lastName,'') + ', ' + ISNULL(firstName,'') as name,reason FROM customerImportTempError
+5/2/2019 6:12:41 PM - Successfully imported file: C:\Users\Santie\Downloads\test1.csv
+Total Dealers Imported:0
+Total Dealers With Errors:
+5/2/2019 6:25:32 PM - ERROR: Connection is not yet configured.
+5/2/2019 6:25:45 PM - Create database connection...
+5/2/2019 6:25:45 PM - Successfully conected in the database...
+5/2/2019 6:25:58 PM - Create database connection...
+5/2/2019 6:25:58 PM - Successfully conected in the database...
+5/2/2019 6:25:58 PM - Select query: SELECT hostname FROM master.dbo.sysprocesses WHERE program_name='Dealer Importer Tool' AND hostname<>'SANTIE'
+5/2/2019 6:25:58 PM - Execute query...
+5/2/2019 6:25:58 PM - Query: IF OBJECT_ID('dbo.customerImportTemp', 'U') IS NOT NULL 
+DROP TABLE dbo.customerImportTemp 
+IF OBJECT_ID('dbo.customerImportTempError', 'U') IS NOT NULL DROP TABLE dbo.customerImportTempError 
+IF OBJECT_ID('dbo.customerImportTemp') IS NOT NULL DROP TABLE customerImportTemp 
+SELECT TOP 0 temporaryCode as DealerCode,FirstName,LastName,cellphone as MobileNumber,CONVERT(VARCHAR(50),Birthday) as Birthday,CONVERT(VARCHAR(MAX),'') as BranchCode,cardTypeId as [Rank],CONVERT(VARCHAR(50),'') as Sponsor 
+INTO  dbo.customerImportTemp 
+FROM customer WITH (NOLOCK) 
+SELECT TOP 0 temporaryCode as DealerCode,FirstName,LastName,cellphone as MobileNumber,CONVERT(VARCHAR(50),birthday) as Birthday,CONVERT(VARCHAR(MAX),'') as BranchCode,cardTypeId as [Rank],CONVERT(VARCHAR(50),'') as Sponsor, CONVERT(VARCHAR(100),'') as reason 
+INTO  dbo.customerImportTempError 
+FROM customer WITH (NOLOCK) 
+5/2/2019 6:25:58 PM - Successfully executed...
+5/2/2019 6:25:58 PM - Execute query...
+5/2/2019 6:25:58 PM - Query: BULK INSERT customerImportTemp 
+FROM 'C:\Users\Santie\Downloads\test1.csv' 
+WITH ( 
+	FIRSTROW = 2, 
+    FIELDTERMINATOR = ',', 
+    ROWTERMINATOR = '\n' 
+); 
+5/2/2019 6:25:58 PM - Execute query...
+5/2/2019 6:25:58 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'No dealer codes specified' 
+FROM customerImportTemp t 
+WHERE ISNULL(t.DealerCode,'')='' 
+DELETE FROM customerImportTemp 
+WHERE ISNULL(DealerCode,'')='' 
+5/2/2019 6:25:58 PM - Successfully executed...
+5/2/2019 6:25:58 PM - Execute query...
+5/2/2019 6:25:58 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'Already Exist' 
+FROM customerImportTemp t 
+LEFT JOIN Customer c WITH (NOLOCK) ON t.DealerCode=c.temporaryCode 
+WHERE ISNULL(c.temporaryCode,'')<>'' 
+UPDATE t 
+SET DealerCode='' 
+FROM customerImportTemp t 
+LEFT JOIN Customer c WITH (NOLOCK) ON t.DealerCode=c.temporaryCode 
+WHERE ISNULL(c.temporaryCode,'')<>'' 
+DELETE FROM customerImportTemp 
+WHERE DealerCode='' 
+5/2/2019 6:25:58 PM - Successfully executed...
+5/2/2019 6:25:58 PM - Execute query...
+5/2/2019 6:25:58 PM - Query: INSERT INTO customerImportTempError 
+SELECT *, 'Blank Name' 
+FROM customerImportTemp 
+WHERE LEN(ISNULL(firstName,'')+ISNULL(lastName,'')) < 2 
+DELETE customerImportTemp WHERE LEN(ISNULL(firstName,'')+ISNULL(lastName,'')) < 2 
+5/2/2019 6:25:58 PM - Successfully executed...
+5/2/2019 6:25:58 PM - Execute query...
+5/2/2019 6:25:58 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'Site RefCode not found' 
+FROM customerImportTemp t 
+LEFT JOIN Site s WITH (NOLOCK) ON t.BranchCode=s.refCode 
+WHERE ISNULL(s.refCode,'')='' 
+UPDATE t 
+SET BranchCode='' 
+FROM customerImportTemp t 
+LEFT JOIN Site s WITH (NOLOCK) ON t.BranchCode=s.refCode 
+WHERE ISNULL(s.refCode,'')=''  
+DELETE FROM customerImportTemp 
+WHERE BranchCode='' 
+5/2/2019 6:25:58 PM - Successfully executed...
+5/2/2019 6:25:58 PM - Execute query...
+5/2/2019 6:25:58 PM - Query: INSERT INTO customerImportTempError 
+SELECT t.*, 'Invalid rank' 
+FROM customerImportTemp t 
+WHERE [rank] NOT IN (SELECT cardTypeId FROM cardType WHERE isDirectSelling=1) 
+DELETE customerImportTemp WHERE [rank] NOT IN (SELECT cardTypeId FROM cardType WHERE isDirectSelling=1) 
+5/2/2019 6:25:58 PM - Successfully executed...
+5/2/2019 6:25:58 PM - Execute query...
+5/2/2019 6:25:58 PM - Query: ALTER TABLE customerImportTemp 
+ADD 
+ [name] [varchar](MAX) NULL, 
+ [name2] [varchar](MAX) NULL, 
+ [membershipsiteCode] [varchar](50) NULL, 
+ [customerId] [INT] NULL; 
+
+5/2/2019 6:25:58 PM - Successfully executed...
+5/2/2019 6:25:58 PM - Execute query...
+5/2/2019 6:25:58 PM - Query: UPDATE customerImportTemp 
+SET name = ISNULL(lastName,'') + ', ' + ISNULL(firstName,'') 
+UPDATE customerImportTemp 
+SET name2 = name 
+5/2/2019 6:25:58 PM - Successfully executed...
+5/2/2019 6:25:58 PM - Execute query...
+5/2/2019 6:25:58 PM - Query: UPDATE customerImportTemp 
+SET membershipSiteCode = s.siteId 
+FROM customerImportTemp t 
+LEFT JOIN Site s ON s.RefCode = t.BranchCode 
+5/2/2019 6:25:58 PM - Successfully executed...
+5/2/2019 6:25:58 PM - Execute query...
+5/2/2019 6:25:58 PM - Query: WITH CTE AS( 
+ SELECT DealerCode,firstName,lastName,MobileNumber,birthday,BranchCode,[rank],sponsor, 
+    DupCount = ROW_NUMBER()OVER(PARTITION BY DealerCode ORDER BY DealerCode) 
+ FROM dbo.customerImportTemp 
+) 
+INSERT INTO customerImportTempError 
+SELECT DealerCode,firstName,lastName,MobileNumber,birthday,BranchCode,[rank],sponsor, 'DUPLICATE' FROM CTE WHERE DupCount > 1; 
+WITH CTE AS( 
+ SELECT DealerCode,firstName,lastName,MobileNumber,birthday,BranchCode,[rank],sponsor, 
+    DupCount = ROW_NUMBER()OVER(PARTITION BY DealerCode ORDER BY DealerCode) 
+ FROM dbo.customerImportTemp 
+) 
+DELETE CTE WHERE DupCount > 1;
+5/2/2019 6:25:58 PM - Successfully executed...
+5/2/2019 6:25:58 PM - Execute query...
+5/2/2019 6:25:58 PM - Query: DECLARE @customerId INT 
+SET @customerId = (SELECT MAX(CustomerId) FROM Customer WITH (NOLOCK)) 
+UPDATE customerImportTemp 
+SET  @customerId = customerId = @customerId + 1 
+5/2/2019 6:25:59 PM - Successfully executed...
+5/2/2019 6:25:59 PM - Execute query...
+5/2/2019 6:25:59 PM - Query: INSERT INTO customer(customerId,customerCode,temporaryCode,cardTypeId,firstName,lastName,birthday,cellphone,membershipSiteCode,name,name2,updateDate,expiryDate,createDate,membershipDate,datePromoted,status) 
+SELECT t.customerId,REPLACE(STR(t.customerId,7),' ','0'),t.DealerCode,[rank],t.firstName,t.lastName,CONVERT(DATETIME,ISNULL(t.birthday,'1/1/1900'),105),t.MobileNumber,t.membershipSiteCode,t.name,t.name2,GETDATE(),'12/31/3000',GETDATE(),GETDATE(),GETDATE(),'A' 
+FROM customerImportTemp t 
+LEFT JOIN Customer c ON t.DealerCode=c.temporaryCode 
+WHERE ISNULL(c.temporaryCode,'')='' 
+5/2/2019 6:25:59 PM - Successfully executed...
+5/2/2019 6:25:59 PM - Execute query...
+5/2/2019 6:25:59 PM - Query: IF (SELECT COUNT(customerId) FROM customerImportTemp WITH (NOLOCK)) > 0 BEGIN 
+   UPDATE counter SET value = (SELECT MAX(customerId) FROM customerImportTemp WITH (NOLOCK)) 
+   WHERE name = 'customerId' END
+5/2/2019 6:25:59 PM - Successfully executed...
+5/2/2019 6:25:59 PM - Select query: SELECT dealerCode,name FROM customerImportTemp
+5/2/2019 6:25:59 PM - Select query: SELECT dealerCode,ISNULL(lastName,'') + ', ' + ISNULL(firstName,'') as name,reason FROM customerImportTempError
+5/2/2019 6:25:59 PM - Successfully imported file: C:\Users\Santie\Downloads\test1.csv
+Total Dealers Imported:0
+Total Dealers With Errors:

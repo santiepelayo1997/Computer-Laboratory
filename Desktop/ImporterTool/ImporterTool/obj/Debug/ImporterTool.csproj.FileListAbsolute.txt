@@ -1,0 +1,37 @@
+c:\users\santie\documents\visual studio 2012\Projects\ImporterTool\ImporterTool\bin\Debug\ImporterTool.exe.config
+c:\users\santie\documents\visual studio 2012\Projects\ImporterTool\ImporterTool\bin\Debug\ImporterTool.exe
+c:\users\santie\documents\visual studio 2012\Projects\ImporterTool\ImporterTool\bin\Debug\ImporterTool.pdb
+c:\users\santie\documents\visual studio 2012\Projects\ImporterTool\ImporterTool\bin\Debug\Bunifu_UI_v1.52.dll
+c:\users\santie\documents\visual studio 2012\Projects\ImporterTool\ImporterTool\bin\Debug\MaterialSkin.dll
+c:\users\santie\documents\visual studio 2012\Projects\ImporterTool\ImporterTool\bin\Debug\MetroFramework.dll
+c:\users\santie\documents\visual studio 2012\Projects\ImporterTool\ImporterTool\obj\Debug\ImporterTool.Properties.Resources.resources
+c:\users\santie\documents\visual studio 2012\Projects\ImporterTool\ImporterTool\obj\Debug\ImporterTool.csproj.GenerateResource.Cache
+c:\users\santie\documents\visual studio 2012\Projects\ImporterTool\ImporterTool\obj\Debug\ImporterTool.exe
+c:\users\santie\documents\visual studio 2012\Projects\ImporterTool\ImporterTool\obj\Debug\ImporterTool.pdb
+c:\users\santie\documents\visual studio 2012\Projects\ImporterTool\ImporterTool\obj\Debug\ImporterTool.Main.resources
+C:\Users\Santie\documents\visual studio 2012\Projects\ImporterTool\ImporterTool\obj\Debug\ImporterTool.csprojResolveAssemblyReference.cache
+C:\Users\Santie\Desktop\ImporterTool\ImporterTool\bin\Debug\ImporterTool.exe.config
+C:\Users\Santie\Desktop\ImporterTool\ImporterTool\obj\Debug\ImporterTool.exe
+C:\Users\Santie\Desktop\ImporterTool\ImporterTool\obj\Debug\ImporterTool.pdb
+D:\Projects\Boutique\World Balance\GIT\ImporterTool\ImporterTool\obj\Debug\ImporterTool.csproj.GenerateResource.Cache
+D:\Projects\Boutique\World Balance\GIT\ImporterTool\ImporterTool\bin\Debug\DealerImporterTool.exe.config
+D:\Projects\Boutique\World Balance\GIT\ImporterTool\ImporterTool\bin\Debug\DealerImporterTool.exe
+D:\Projects\Boutique\World Balance\GIT\ImporterTool\ImporterTool\bin\Debug\DealerImporterTool.pdb
+D:\Projects\Boutique\World Balance\GIT\ImporterTool\ImporterTool\obj\Debug\DealerImporterTool.Main.resources
+D:\Projects\Boutique\World Balance\GIT\ImporterTool\ImporterTool\obj\Debug\DealerImporterTool.Properties.Resources.resources
+D:\Projects\Boutique\World Balance\GIT\ImporterTool\ImporterTool\obj\Debug\DealerImporterTool.exe
+D:\Projects\Boutique\World Balance\GIT\ImporterTool\ImporterTool\obj\Debug\DealerImporterTool.pdb
+D:\Projects\Boutique\World Balance\GIT\ImporterTool\ImporterTool\obj\Debug\DealerImporterTool.ErrorSummary.resources
+C:\Users\Santie\Desktop\dealer-importer-tool-master\ImporterTool\bin\Debug\DealerImporterTool.exe.config
+C:\Users\Santie\Desktop\dealer-importer-tool-master\ImporterTool\obj\Debug\DealerImporterTool.exe
+C:\Users\Santie\Desktop\dealer-importer-tool-master\ImporterTool\obj\Debug\DealerImporterTool.pdb
+C:\Users\Santie\Desktop\dealer-importer-tool-master\ImporterTool\bin\Debug\DealerImporterTool.exe
+C:\Users\Santie\Desktop\dealer-importer-tool-master\ImporterTool\bin\Debug\DealerImporterTool.pdb
+C:\Users\Santie\Desktop\dealer-importer-tool-master\ImporterTool\obj\Debug\DealerImporterTool.ErrorSummary.resources
+C:\Users\Santie\Desktop\dealer-importer-tool-master\ImporterTool\obj\Debug\DealerImporterTool.Main.resources
+C:\Users\Santie\Desktop\dealer-importer-tool-master\ImporterTool\obj\Debug\DealerImporterTool.Properties.Resources.resources
+C:\Users\Santie\Desktop\dealer-importer-tool-master\ImporterTool\obj\Debug\ImporterTool.csproj.GenerateResource.Cache
+C:\Users\Santie\Desktop\dealer-importer-tool-master\ImporterTool\obj\Debug\ImporterTool.csprojResolveAssemblyReference.cache
+C:\Users\Santie\Desktop\ImporterTool\ImporterTool\bin\Debug\DealerImporterTool.exe.config
+C:\Users\Santie\Desktop\ImporterTool\ImporterTool\obj\Debug\DealerImporterTool.exe
+C:\Users\Santie\Desktop\ImporterTool\ImporterTool\obj\Debug\DealerImporterTool.pdb
